@@ -21,8 +21,8 @@ public:
  	property<CRKLog, bool, READ_WRITE> EnableLog;
 	CRKLog(string logFilePath, string logFileName, bool enable = false);
 	~CRKLog();
-	bool SaveBuffer(string fileName, PBYTE lpBuffer, DWORD dwSize);
-	void PrintBuffer(string &strOutput, PBYTE lpBuffer, DWORD dwSize, UINT uiLineCount = 16);
+	bool SaveBuffer(string fileName, PBYTE lpBuffer, unsigned int dwSize);
+	void PrintBuffer(string &strOutput, PBYTE lpBuffer, unsigned int dwSize, UINT uiLineCount = 16);
 	void Record(const char *lpFmt, ...);
 	
 protected:

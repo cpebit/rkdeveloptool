@@ -6,6 +6,7 @@
  */
 
 #include "RKDevice.h"
+#include "win32/win32.h"
 
 const char* szManufName[] =
 {
@@ -48,7 +49,7 @@ void CRKDevice::SetLayerName(char *value)
 {
 	strcpy(m_layerName,value);
 }
-void CRKDevice::SetLocationID(DWORD value)
+void CRKDevice::SetLocationID(unsigned int value)
 {
 	m_locationID = value;
 }
@@ -96,7 +97,7 @@ USHORT CRKDevice::GetBcdUsb()
 {
 	return m_bcdUsb;
 }
-DWORD CRKDevice::GetLocationID()
+unsigned int CRKDevice::GetLocationID()
 {
 	return m_locationID;
 }
@@ -105,7 +106,7 @@ char* CRKDevice::GetLayerName()
 	return m_layerName;
 }
 
-string CRKDevice::GetLayerString(DWORD dwLocationID)
+string CRKDevice::GetLayerString(unsigned int dwLocationID)
 {
 	char szLocation[32] = "\0";
 	sprintf(szLocation, "%d-%d", dwLocationID >> 8, dwLocationID & 0xff);
@@ -208,7 +209,7 @@ bool CRKDevice::SetObject(CRKImage *pImage, CRKComm *pComm, CRKLog *pLog)
 		m_os = RK_OS;
 	return true;
 }
-int CRKDevice::EraseEmmcBlock(UCHAR ucFlashCS, DWORD dwPos, DWORD dwCount)
+int CRKDevice::EraseEmmcBlock(UCHAR ucFlashCS, unsigned int dwPos, unsigned int dwCount)
 {
 	int sectorOffset,nWrittenBlcok,iRet;
 	BYTE emptyData[4 * (SECTOR_SIZE+SPARE_SIZE)];
@@ -228,7 +229,7 @@ int CRKDevice::EraseEmmcBlock(UCHAR ucFlashCS, DWORD dwPos, DWORD dwCount)
 	}
 	return ERR_SUCCESS;
 }
-int CRKDevice::EraseEmmcByWriteLBA(DWORD dwSectorPos, DWORD dwCount)
+int CRKDevice::EraseEmmcByWriteLBA(unsigned int dwSectorPos, unsigned int dwCount)
 {
 	int nWritten,iRet;
 	BYTE emptyData[32 * SECTOR_SIZE];
@@ -255,7 +256,7 @@ bool CRKDevice::EraseEmmc()
 	int iRet=ERR_SUCCESS,iLoopTimes=0;
 	uiTotalCount = uiCount = m_flashInfo.uiFlashSize*2*1024;
 	uiSectorOffset = 0;
-	DWORD dwLayerID;
+	unsigned int dwLayerID;
 	dwLayerID = m_locationID;
 	ENUM_CALL_STEP emCallStep = CALL_FIRST;
 
@@ -340,7 +341,7 @@ bool CRKDevice::GetFlashInfo()
 	}
 	iRet = m_pComm->RKU_ReadFlashID(flashID);
 	if( ERR_SUCCESS == iRet ) {
-		DWORD *pID = (DWORD *)flashID;
+		unsigned int *pID = (unsigned int *)flashID;
 		if (*pID==0x434d4d45)/*emmc*/ {
 			m_bEmmc = true;
 		} else
@@ -356,7 +357,7 @@ bool CRKDevice::GetFlashInfo()
 bool CRKDevice::TestDevice()
 {
 	int iResult, iTryCount;
-	DWORD dwTotal, dwCurrent, dwLayerID;
+	unsigned int dwTotal, dwCurrent, dwLayerID;
 	dwLayerID = m_locationID;
 	ENUM_CALL_STEP emCallStep = CALL_FIRST;
 	do {
@@ -370,7 +371,7 @@ bool CRKDevice::TestDevice()
 				m_pLog->Record("<LAYER %s> ERROR:TestDevice-->RKU_TestDeviceReady failed, RetCode(%d)", m_layerName, iResult);
 			}
 			iTryCount--;
-			sleep(1);
+			sleep(1000);
 		}
 		if (iTryCount <= 0) {
 			return false;
@@ -406,7 +407,7 @@ bool CRKDevice::TestDevice()
 			m_callBackProc(dwLayerID, TESTDEVICE_PROGRESS, dwTotal, dwCurrent, emCallStep);
 			emCallStep = CALL_MIDDLE;
 		}
-		sleep(1);
+		sleep(1000);
 	}while(iResult == ERR_DEVICE_UNREADY);
 	return true;
 }
@@ -454,8 +455,8 @@ bool CRKDevice::CheckChip()
 		}
 		memset(m_chipData, 0, CHIPINFO_LEN);
 		memcpy(m_chipData, bChipInfo, CHIPINFO_LEN);
-		DWORD *pValue;
-		pValue = (DWORD *)(&bChipInfo[0]);
+		unsigned int *pValue;
+		pValue = (unsigned int *)(&bChipInfo[0]);
 
 		if ((ENUM_RKDEVICE_TYPE)(*pValue) == m_device) {
 			return true;
@@ -510,7 +511,7 @@ bool CRKDevice::CheckChip()
 int CRKDevice::DownloadBoot()
 {
 	UCHAR i;
-	DWORD dwSize, dwDelay;
+	unsigned int dwSize, dwDelay;
 	PBYTE pBuffer = NULL;
 	for ( i = 0; i < m_pImage->m_bootObject->Entry471Count; i++ ) {
 		if ( !m_pImage->m_bootObject->GetEntryProperty(ENTRY471, i, dwSize, dwDelay) ) {
@@ -538,7 +539,7 @@ int CRKDevice::DownloadBoot()
 			delete []pBuffer;
 			pBuffer = NULL;
 			if (dwDelay>0) {
-				usleep(dwDelay * 1000);
+				sleep(dwDelay);
 			}
 
 		}
@@ -570,15 +571,15 @@ int CRKDevice::DownloadBoot()
 			delete []pBuffer;
 			pBuffer = NULL;
 			if (dwDelay > 0) {
-				usleep(dwDelay * 1000);
+				sleep(dwDelay);
 			}
 		}
 	}
-	sleep(1);
+	sleep(1000);
 	return 0;
 
 }
-bool CRKDevice::Boot_VendorRequest( DWORD requestCode, PBYTE pBuffer, DWORD dwDataSize)
+bool CRKDevice::Boot_VendorRequest( unsigned int requestCode, PBYTE pBuffer, unsigned int dwDataSize)
 {
 	int iRet;
 	iRet = m_pComm->RKU_DeviceRequest(requestCode, pBuffer, dwDataSize);
@@ -596,7 +597,7 @@ int CRKDevice::EraseAllBlocks()
 		}
 	}
 	ReadCapability();
-	DWORD dwLayerID;
+	unsigned int dwLayerID;
 	dwLayerID = LocationID;
 	ENUM_CALL_STEP emCallStep = CALL_FIRST;
 	if ((m_bEmmc)||(m_bDirectLba)) {

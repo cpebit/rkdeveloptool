@@ -5,8 +5,6 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#include   <unistd.h>
-#include   <dirent.h>
 #include "config.h"
 #include "DefineHeader.h"
 #include "gpt.h"
@@ -15,10 +13,14 @@
 #include "RKComm.h"
 #include "RKDevice.h"
 #include "RKImage.h"
+#include "win32/win32.h"
+
 extern const char *szManufName[];
 CRKLog *g_pLogObject=NULL;
 CONFIG_ITEM_VECTOR g_ConfigItemVec;
 #define DEFAULT_RW_LBA 128
+#define N_SECTOR_SIZE 512
+#define N_SECTORS DEFAULT_RW_LBA*N_SECTOR_SIZE
 #define CURSOR_MOVEUP_LINE(n) printf("%c[%dA", 0x1B, n)
 #define CURSOR_DEL_LINE printf("%c[2K", 0x1B)
 #define CURSOR_MOVE_HOME printf("%c[H", 0x1B)
@@ -65,7 +67,7 @@ void usage()
 	printf("TagSPL:\t\t\ttagspl <tag> <U-Boot SPL>\r\n");
 	printf("-------------------------------------------------------\r\n\r\n");
 }
-void ProgressInfoProc(DWORD deviceLayer, ENUM_PROGRESS_PROMPT promptID, long long totalValue, long long currentValue, ENUM_CALL_STEP emCall)
+void ProgressInfoProc(unsigned int deviceLayer, ENUM_PROGRESS_PROMPT promptID, long long totalValue, long long currentValue, ENUM_CALL_STEP emCall)
 {
 	string strInfoText="";
 	char szText[256];
@@ -149,7 +151,7 @@ void PrintData(PBYTE pData, int nSize)
 //			return false;
 //		int nSrcLen = strlen(pszSrc);
 //		int nDestLen = nSrcLen * 2;
-//	
+//
 //		pszDest = NULL;
 //		pszDest = new wchar_t[nDestLen];
 //		if (!pszDest)
@@ -167,18 +169,18 @@ void PrintData(PBYTE pData, int nSize)
 //		char *pIn, *pOut;
 //		pIn = (char *)pszSrc;
 //		pOut = (char *)pszDest;
-//	
+//
 //		iRet = iconv(cd, (char **)&pIn, (size_t *)&nSrcLen, (char **)&pOut, (size_t *)&nDestLen);
-//	
+//
 //		if(iRet == -1) {
 //			delete []pszDest;
 //			pszDest = NULL;
 //			iconv_close(cd);
 //			return false;
 //		 }
-//	
+//
 //		 iconv_close(cd);
-//	
+//
 //		 return true;
 //	}
 //	bool WideStringToString(wchar_t *pszSrc, char *&pszDest)
@@ -196,7 +198,7 @@ void PrintData(PBYTE pData, int nSize)
 //		int iRet;
 //		iconv_t cd;
 //		cd = iconv_open("UTF-8", "UTF-32");
-//	
+//
 //		if((iconv_t)-1 == cd) {
 //			delete []pszDest;
 //			pszDest = NULL;
@@ -206,16 +208,16 @@ void PrintData(PBYTE pData, int nSize)
 //		pIn = (char *)pszSrc;
 //		pOut = (char *)pszDest;
 //		iRet = iconv(cd, (char **)&pIn, (size_t *)&nSrcLen, (char **)&pOut, (size_t *)&nDestLen);
-//	
+//
 //		if(iRet == -1) {
 //			delete []pszDest;
 //			pszDest = NULL;
 //			iconv_close(cd);
 //			return false;
 //		 }
-//	
+//
 //		 iconv_close(cd);
-//	
+//
 //		 return true;
 //	}
 int find_config_item(CONFIG_ITEM_VECTOR &vecItems, const char *pszName)
@@ -383,7 +385,7 @@ bool ParsePartitionInfo(string &strPartInfo, string &strName, UINT &uiOffset, UI
 bool ParseUuidInfo(string &strUuidInfo, string &strName, string &strUUid)
 {
 	string::size_type pos(0);
-	
+
 	if (strUuidInfo.size() <= 0) {
 		return false;
 	}
@@ -398,13 +400,13 @@ bool ParseUuidInfo(string &strUuidInfo, string &strName, string &strUUid)
 	strUUid = strUuidInfo.substr(pos+1);
 	strUUid.erase(0, strUUid.find_first_not_of(" "));
 	strUUid.erase(strUUid.find_last_not_of(" ") + 1);
-	
-	while(true) { 
+
+	while(true) {
 		pos = 0;
-		if( (pos = strUUid.find("-")) != string::npos) 
-			strUUid.replace(pos,1,""); 
-		else 
-			break; 
+		if( (pos = strUUid.find("-")) != string::npos)
+			strUUid.replace(pos,1,"");
+		else
+			break;
 	}
 	if (strUUid.size() != 32)
 		return false;
@@ -448,7 +450,7 @@ bool parse_parameter(char *pParameter, PARAM_ITEM_VECTOR &vecItem, CONFIG_ITEM_V
 			}
 			continue;
 		}
-			
+
 		pos = strLine.find("mtdparts");
 		if (pos == string::npos) {
 			continue;
@@ -545,7 +547,7 @@ bool is_sparse_image(char *szImage)
 		return false;
 	}
 	return true;
-	
+
 }
 bool is_ubifs_image(char *szImage)
 {
@@ -599,7 +601,7 @@ void prepare_gpt_backup(u8 *master, u8 *backup)
 	val = le64_to_cpu(gptMasterHead->my_lba);
 	gptBackupHead->my_lba = gptMasterHead->alternate_lba;
 	gptBackupHead->alternate_lba = cpu_to_le64(val);
-	gptBackupHead->partition_entry_lba = cpu_to_le64(le64_to_cpu(gptMasterHead->last_usable_lba) + 1); 
+	gptBackupHead->partition_entry_lba = cpu_to_le64(le64_to_cpu(gptMasterHead->last_usable_lba) + 1);
 	gptBackupHead->header_crc32 = 0;
 
 	calc_crc32 = crc32_le(0, (unsigned char *)gptBackupHead, le32_to_cpu(gptBackupHead->header_size));
@@ -641,7 +643,7 @@ bool get_lba_from_param(u8 *param, char *pszName, u32 *part_offset, u32 *part_si
 	bool bFound = false, bRet;
 	PARAM_ITEM_VECTOR vecItem;
 	CONFIG_ITEM_VECTOR vecUuid;
-	
+
 	bRet = parse_parameter((char *)param, vecItem, vecUuid);
 	if (!bRet)
 		return false;
@@ -680,8 +682,8 @@ void update_gpt_disksize(u8 *master, u8 *backup, u32 total_sector)
 
 	gptMasterHead->alternate_lba = cpu_to_le64(total_sector - 1);
 	gptMasterHead->last_usable_lba = cpu_to_le64(total_sector- 34);
-	
-	if (gptLastPartEntry->ending_lba == (old_disksize - 34)) {//grow partition 
+
+	if (gptLastPartEntry->ending_lba == (old_disksize - 34)) {//grow partition
 		gptLastPartEntry->ending_lba = cpu_to_le64(total_sector- 34);
 		gptMasterHead->partition_entry_array_crc32 = cpu_to_le32(crc32_le(0, master + 2 * SECTOR_SIZE, GPT_ENTRY_SIZE * GPT_ENTRY_NUMBERS));
 	}
@@ -690,7 +692,7 @@ void update_gpt_disksize(u8 *master, u8 *backup, u32 total_sector)
 	memcpy(backup,master + 2 * SECTOR_SIZE, GPT_ENTRY_SIZE * GPT_ENTRY_NUMBERS);
 	memcpy(backup + GPT_ENTRY_SIZE * GPT_ENTRY_NUMBERS, master + SECTOR_SIZE, SECTOR_SIZE);
 	prepare_gpt_backup(master, backup);
-	
+
 }
 bool load_gpt_buffer(char *pParamFile, u8 *master, u8 *backup)
 {
@@ -711,7 +713,7 @@ bool load_gpt_buffer(char *pParamFile, u8 *master, u8 *backup)
 		fclose(file);
 		return false;
 	}
-	
+
 	int iRead;
 	iRead = fread(master, 1, 34 * SECTOR_SIZE, file);
 	if (iRead != 34 * SECTOR_SIZE) {
@@ -835,7 +837,7 @@ bool MakeSector3(PBYTE pSector)
 	return true;
 }
 
-int MakeIDBlockData(PBYTE pDDR, PBYTE pLoader, PBYTE lpIDBlock, USHORT usFlashDataSec, USHORT usFlashBootSec, DWORD dwLoaderDataSize, DWORD dwLoaderSize, bool rc4Flag)
+int MakeIDBlockData(PBYTE pDDR, PBYTE pLoader, PBYTE lpIDBlock, USHORT usFlashDataSec, USHORT usFlashBootSec, unsigned int dwLoaderDataSize, unsigned int dwLoaderSize, bool rc4Flag)
 {
 	RK28_IDB_SEC0 sector0Info;
 	RK28_IDB_SEC1 sector1Info;
@@ -864,7 +866,7 @@ int MakeIDBlockData(PBYTE pDDR, PBYTE pLoader, PBYTE lpIDBlock, USHORT usFlashDa
 		for (i = 0; i < dwLoaderSize/SECTOR_SIZE; i++)
 			P_RC4(pLoader + i * SECTOR_SIZE, SECTOR_SIZE);
 	}
-	
+
 	memcpy(lpIDBlock + SECTOR_SIZE * 4, pDDR, dwLoaderDataSize);
 	memcpy(lpIDBlock + SECTOR_SIZE * (4 + usFlashDataSec), pLoader, dwLoaderSize);
 
@@ -918,7 +920,7 @@ bool MakeParamBuffer(char *pParamFile, char* &pParamData)
 	}
 	memset(pParamBuf,0,iFileSize+12);
 	*(UINT *)(pParamBuf) = 0x4D524150;
-	
+
 	int iRead;
 	iRead = fread(pParamBuf+8,1,iFileSize,file);
 	if (iRead!=iFileSize)
@@ -930,7 +932,7 @@ bool MakeParamBuffer(char *pParamFile, char* &pParamData)
 		return false;
 	}
 	fclose(file);
-	
+
 	*(UINT *)(pParamBuf+4) = iFileSize;
 	*(UINT *)(pParamBuf+8+iFileSize) = CRC_32( (PBYTE)pParamBuf+8, iFileSize);
 	pParamData = pParamBuf;
@@ -981,7 +983,7 @@ bool write_parameter(STRUCT_RKDEVICE_DESC &dev, char *szParameter)
 		printf("\r\n");
 		return bSuccess;
 	}
-		
+
 	bSuccess = true;
 	CURSOR_MOVEUP_LINE(1);
 	CURSOR_DEL_LINE;
@@ -1046,7 +1048,7 @@ bool write_gpt(STRUCT_RKDEVICE_DESC &dev, char *szParameter)
 		memcpy(backup_gpt + 32 * SECTOR_SIZE, master_gpt + SECTOR_SIZE, SECTOR_SIZE);
 		prepare_gpt_backup(master_gpt, backup_gpt);
 	}
-	
+
 	//4. write gpt
 	iRet = pComm->RKU_WriteLBA(0, 34, master_gpt);
 	if (iRet != ERR_SUCCESS) {
@@ -1064,7 +1066,7 @@ bool write_gpt(STRUCT_RKDEVICE_DESC &dev, char *szParameter)
 		printf("\r\n");
 		return bSuccess;
 	}
-		
+
 	bSuccess = true;
 	CURSOR_MOVEUP_LINE(1);
 	CURSOR_DEL_LINE;
@@ -1909,7 +1911,7 @@ bool upgrade_loader(STRUCT_RKDEVICE_DESC &dev, char *szLoader)
 	int iRet;
 	signed char index;
 	USHORT usFlashDataSec, usFlashBootSec;
-	DWORD dwLoaderSize, dwLoaderDataSize, dwDelay, dwSectorNum;
+	unsigned int dwLoaderSize, dwLoaderDataSize, dwDelay, dwSectorNum;
 	char loaderCodeName[] = "FlashBoot";
 	char loaderDataName[] = "FlashData";
 	PBYTE loaderCodeBuffer = NULL;
@@ -2057,14 +2059,14 @@ bool print_gpt(STRUCT_RKDEVICE_DESC &dev)
 		if (gptHead->signature != le64_to_cpu(GPT_HEADER_SIGNATURE)) {
 			goto Exit_PrintGpt;
 		}
-			
+
 	} else {
 		if (g_pLogObject)
 				g_pLogObject->Record("Error: read gpt failed, err=%d", iRet);
 		printf("Read GPT failed!\r\n");
 		goto Exit_PrintGpt;
 	}
-	
+
 	printf("**********Partition Info(GPT)**********\r\n");
 	printf("NO  LBA       Name                \r\n");
 	for (i = 0; i < le32_to_cpu(gptHead->num_partition_entries); i++) {
@@ -2109,7 +2111,7 @@ bool print_parameter(STRUCT_RKDEVICE_DESC &dev)
 		if (*(u32 *)param_buf != 0x4D524150) {
 			goto Exit_PrintParam;
 		}
-			
+
 	} else {
 		if (g_pLogObject)
 				g_pLogObject->Record("Error: read parameter failed, err=%d", iRet);
@@ -2118,7 +2120,7 @@ bool print_parameter(STRUCT_RKDEVICE_DESC &dev)
 	}
 	nParamSize = *(u32 *)(param_buf + 4);
 	memset(param_buf+8+nParamSize, 0, 512*SECTOR_SIZE - nParamSize - 8);
-	
+
 	bRet = parse_parameter((char *)(param_buf+8), vecParamItem, vecUuidItem);
 	if (!bRet) {
 		if (g_pLogObject)
@@ -2384,7 +2386,7 @@ bool read_capability(STRUCT_RKDEVICE_DESC &dev)
 
 	pComm =  new CRKUsbComm(dev, g_pLogObject, bRet);
 	if (bRet) {
-		
+
 		BYTE capability[8];
 		iRet = pComm->RKU_ReadCapability(capability);
 		if (iRet != ERR_SUCCESS)
@@ -2405,7 +2407,7 @@ bool read_capability(STRUCT_RKDEVICE_DESC &dev)
 			{
 				printf("Vendor Storage:\tenabled\r\n");
 			}
-				
+
 			if (capability[0] & 4)
 			{
 				printf("First 4m Access:\tenabled\r\n");
@@ -2491,8 +2493,7 @@ bool read_lba(STRUCT_RKDEVICE_DESC &dev, UINT uiBegin, UINT uiLen, char *szFile)
 	bool bRet, bFirst = true, bSuccess = false;
 	int iRet;
 	UINT iTotalRead = 0,iRead = 0;
-	int nSectorSize = 512;
-	BYTE pBuf[nSectorSize * DEFAULT_RW_LBA];
+	BYTE pBuf[N_SECTORS];
 	pComm =  new CRKUsbComm(dev, g_pLogObject, bRet);
 	if (bRet) {
 		if(szFile) {
@@ -2504,7 +2505,7 @@ bool read_lba(STRUCT_RKDEVICE_DESC &dev, UINT uiBegin, UINT uiLen, char *szFile)
 		}
 
 		while(uiLen > 0) {
-			memset(pBuf, 0, nSectorSize * DEFAULT_RW_LBA);
+			memset(pBuf, 0, N_SECTORS);
 			iRead = (uiLen >= DEFAULT_RW_LBA) ? DEFAULT_RW_LBA : uiLen;
 			iRet = pComm->RKU_ReadLBA( uiBegin + iTotalRead, iRead, pBuf);
 			if(ERR_SUCCESS == iRet) {
@@ -2512,7 +2513,7 @@ bool read_lba(STRUCT_RKDEVICE_DESC &dev, UINT uiBegin, UINT uiLen, char *szFile)
 				iTotalRead += iRead;
 
 				if(szFile) {
-					fwrite(pBuf, 1, iRead * nSectorSize, file);
+					fwrite(pBuf, 1, iRead * N_SECTOR_SIZE, file);
 					if (bFirst){
 						if (iTotalRead >= 1024)
 							printf("Read LBA to file (%d%%)\r\n", (iTotalRead / 1024) * 100 / ((uiLen + iTotalRead) / 1024));
@@ -2529,7 +2530,7 @@ bool read_lba(STRUCT_RKDEVICE_DESC &dev, UINT uiBegin, UINT uiLen, char *szFile)
 					}
 				}
 				else
-					PrintData(pBuf, nSectorSize * iRead);
+					PrintData(pBuf, N_SECTOR_SIZE * iRead);
 			} else {
 				if (g_pLogObject)
 					g_pLogObject->Record("Error: RKU_ReadLBA failed, err=%d", iRet);
@@ -2559,7 +2560,7 @@ bool erase_ubi_block(STRUCT_RKDEVICE_DESC &dev, u32 uiOffset, u32 uiPartSize)
 	bool bRet,bSuccess=false;
 	UINT uiReadCount,uiStartBlock,uiEraseBlock,uiBlockCount,uiErasePos;
 	int iRet;
-	DWORD *pID=NULL;
+	unsigned int *pID=NULL;
 
 	if (!check_device_type(dev, RKUSB_LOADER | RKUSB_MASKROM))
 		return false;
@@ -2578,7 +2579,7 @@ bool erase_ubi_block(STRUCT_RKDEVICE_DESC &dev, u32 uiOffset, u32 uiPartSize)
 		}
 		goto EXIT_UBI_ERASE;
 	}
-	pID = (DWORD *)flashID;
+	pID = (unsigned int *)flashID;
 
 	if (*pID==0x434d4d45)//emmc
 	{
@@ -2602,7 +2603,7 @@ bool erase_ubi_block(STRUCT_RKDEVICE_DESC &dev, u32 uiOffset, u32 uiPartSize)
 	else
 		uiEraseBlock = uiPartSize / info.usBlockSize + 1;
 
-	
+
 	uiErasePos=uiStartBlock;
 	while (uiEraseBlock>0)
 	{
@@ -2672,7 +2673,7 @@ bool EatSparseChunk(FILE *file, chunk_header &chunk)
 	}
 	return true;
 }
-bool EatSparseData(FILE *file, PBYTE pBuf, DWORD dwSize)
+bool EatSparseData(FILE *file, PBYTE pBuf, unsigned int dwSize)
 {
 	UINT uiRead;
 	uiRead = fread(pBuf, 1, dwSize, file);
@@ -2704,7 +2705,7 @@ bool write_sparse_lba(STRUCT_RKDEVICE_DESC &dev, UINT uiBegin, UINT uiSize, char
 	dwMaxReadWriteBytes = DEFAULT_RW_LBA * SECTOR_SIZE;
 	pComm =  new CRKUsbComm(dev, g_pLogObject, bRet);
 	if (bRet) {
-		
+
 		file = fopen(szFile, "rb");
 		if( !file ) {
 			printf("%s failed, err=%d, can't open file: %s\r\n", __func__, errno, szFile);
@@ -2730,7 +2731,7 @@ bool write_sparse_lba(STRUCT_RKDEVICE_DESC &dev, UINT uiBegin, UINT uiSize, char
 			printf("%s failed, erase partition error\r\n", __func__);
 			goto Exit_WriteSparseLBA;
 		}
-		while(curChunk < header.total_chunks) 
+		while(curChunk < header.total_chunks)
 		{
 			if (!EatSparseChunk(file, chunk)) {
 				goto Exit_WriteSparseLBA;
@@ -2790,7 +2791,7 @@ bool write_sparse_lba(STRUCT_RKDEVICE_DESC &dev, UINT uiBegin, UINT uiSize, char
 						uiTransferSec = ((dwTransferBytes % SECTOR_SIZE == 0) ? (dwTransferBytes / SECTOR_SIZE) : (dwTransferBytes / SECTOR_SIZE + 1));
 					}
 					for (i = 0; i < dwTransferBytes / 4; i++) {
-						*(DWORD *)(pBuf + i * 4) = dwFillByte;
+						*(unsigned int *)(pBuf + i * 4) = dwFillByte;
 					}
 					iRet = pComm->RKU_WriteLBA(uiBegin, uiTransferSec, pBuf);
 					if( ERR_SUCCESS == iRet ) {
@@ -2850,7 +2851,7 @@ Exit_WriteSparseLBA:
 	if (file)
 		fclose(file);
 	return bSuccess;
-	
+
 }
 
 bool write_lba(STRUCT_RKDEVICE_DESC &dev, UINT uiBegin, char *szFile)
@@ -2864,9 +2865,7 @@ bool write_lba(STRUCT_RKDEVICE_DESC &dev, UINT uiBegin, char *szFile)
 	long long iTotalWrite = 0, iFileSize = 0;
 	UINT iWrite = 0, iRead = 0;
 	UINT uiLen;
-	int nSectorSize = 512;
-	BYTE pBuf[nSectorSize * DEFAULT_RW_LBA];
-	
+	BYTE pBuf[N_SECTORS];
 
 	pComm =  new CRKUsbComm(dev, g_pLogObject, bRet);
 	if (bRet) {
@@ -2880,8 +2879,8 @@ bool write_lba(STRUCT_RKDEVICE_DESC &dev, UINT uiBegin, char *szFile)
 		iFileSize = ftello(file);
 		fseeko(file, 0, SEEK_SET);
 		while(iTotalWrite < iFileSize) {
-			memset(pBuf, 0, nSectorSize * DEFAULT_RW_LBA);
-			iWrite = iRead= fread(pBuf, 1, nSectorSize * DEFAULT_RW_LBA, file);
+			memset(pBuf, 0, N_SECTORS);
+			iWrite = iRead= fread(pBuf, 1, N_SECTORS, file);
 			uiLen = ((iWrite % 512) == 0) ? (iWrite / 512) : (iWrite / 512 + 1);
 			iRet = pComm->RKU_WriteLBA( uiBegin, uiLen, pBuf);
 			if(ERR_SUCCESS == iRet) {
@@ -3021,7 +3020,7 @@ void list_device(CRKScan *pScan)
 		printf("DevNo=%d\tVid=0x%x,Pid=0x%x,LocationID=%x\t%s\r\n",i+1,desc.usVid,
 		       desc.usPid,desc.uiLocationID,strDevType.c_str());
 	}
-	
+
 }
 
 
@@ -3072,7 +3071,7 @@ bool handle_command(int argc, char* argv[], CRKScan *pScan)
 		list_device(pScan);
 		return (cnt>0)?true:false;
 	}
-	
+
 	if (cnt < 1) {
 		ERROR_COLOR_ATTR;
 		printf("Did not find any rockusb device, please plug device in!");
@@ -3229,7 +3228,7 @@ bool handle_command(int argc, char* argv[], CRKScan *pScan)
 				else
 					printf("Not found any partition table!\r\n");
 			}
-			
+
 		} else
 			printf("Parameter of [WLX] command is invalid, please check help!\r\n");
 	} else if (strcmp(strCmd.c_str(), "RL") == 0) {//Read LBA
@@ -3272,27 +3271,19 @@ int main(int argc, char* argv[])
 {
 	CRKScan *pScan = NULL;
 	int ret;
-	char szProgramProcPath[100];
-	char szProgramDir[256];
 	string strLogDir,strConfigFile;
 	struct stat statBuf;
 
 	g_ConfigItemVec.clear();
-	sprintf(szProgramProcPath, "/proc/%d/exe", getpid());
-	if (readlink(szProgramProcPath, szProgramDir, 256) == -1)
-		strcpy(szProgramDir, ".");
-	else {
-		char *pSlash;
-		pSlash = strrchr(szProgramDir, '/');
-		if (pSlash)
-			*pSlash = '\0';
-	}
-	strLogDir = szProgramDir;
-	strLogDir +=  "/log/";
-	strConfigFile = szProgramDir;
-	strConfigFile += "/config.ini";
+
+	strLogDir =  "./log/";
+	strConfigFile += "./config.ini";
 	if (opendir(strLogDir.c_str()) == NULL)
-		mkdir(strLogDir.c_str(), S_IRWXU | S_IRWXG | S_IROTH);
+#if defined(_WIN32) || defined(WIN32)
+        mkdir(strLogDir.c_str());
+#else
+        mkdir(strLogDir.c_str(), S_IRWXU | S_IRWXG | S_IROTH);
+#endif
 	g_pLogObject = new CRKLog(strLogDir.c_str(), "log",true);
 
 	if(stat(strConfigFile.c_str(), &statBuf) < 0) {

@@ -1,17 +1,18 @@
 #ifndef DEFINE_HEADER
 #define DEFINE_HEADER
+
+#include "win32/win32.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <dirent.h>
 #include <time.h>
-#include <unistd.h>
 //	#include <iconv.h>
 #include <wchar.h>
 #include <errno.h>
-#include <pthread.h>
+// #include <pthread.h>
 #include <libusb.h>
 
 #include "Property.hpp"
@@ -24,10 +25,8 @@
 using namespace std;
 typedef unsigned char BYTE, *PBYTE;
 typedef unsigned char UCHAR;
-typedef unsigned short WCHAR;
 typedef unsigned short USHORT;
 typedef unsigned int	UINT;
-typedef unsigned int	DWORD;
 #define ALIGN(x, a)		__ALIGN_MASK((x), (a) - 1)
 #define __ALIGN_MASK(x, mask)	(((x) + (mask)) & ~(mask))
 #define RK28_SEC2_RESERVED_LEN 473
@@ -129,7 +128,7 @@ typedef struct _STRUCT_RKDEVICE_DESC{
 	void   *pUsbHandle;
 } STRUCT_RKDEVICE_DESC, *PSTRUCT_RKDEVICE_DESC;
 typedef	struct {
-	DWORD	dwTag;
+	unsigned int	dwTag;
 	BYTE	reserved[4];
 	UINT	uiRc4Flag;
 	USHORT	usBootCode1Offset;
@@ -153,7 +152,7 @@ typedef struct {
 	USHORT	usLoaderVer;
 	USHORT  usLastLoaderVer;
 	USHORT  usReadWriteTimes;
-	DWORD	dwFwVer;
+	unsigned int	dwFwVer;
 	USHORT  usMachineInfoLen;
 	UCHAR	ucMachineInfo[30];
 	USHORT	usManufactoryInfoLen;
@@ -229,7 +228,7 @@ typedef enum{
 	CALL_LAST
 } ENUM_CALL_STEP;
 
-typedef void (*ProgressPromptCB)(DWORD deviceLayer, ENUM_PROGRESS_PROMPT promptID, long long totalValue, long long currentValue, ENUM_CALL_STEP emCall);
+typedef void (*ProgressPromptCB)(unsigned int deviceLayer, ENUM_PROGRESS_PROMPT promptID, long long totalValue, long long currentValue, ENUM_CALL_STEP emCall);
 
 //	bool WideStringToString(wchar_t *pszSrc, char *&pszDest);
 //	bool StringToWideString(char *pszSrc, wchar_t *&pszDest);

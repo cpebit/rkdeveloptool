@@ -5,6 +5,8 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 #include "RKLog.h"
+#include "win32/win32.h"
+
 int file_stat(string strPath)
 {
 	struct stat statBuf;
@@ -94,7 +96,7 @@ bool CRKLog::Write(string text)
 	}
 	return true;
 }
-bool CRKLog::SaveBuffer(string fileName, PBYTE lpBuffer, DWORD dwSize)
+bool CRKLog::SaveBuffer(string fileName, PBYTE lpBuffer, unsigned int dwSize)
 {
 	FILE *file;
 	file = fopen(fileName.c_str(), "wb+");
@@ -105,7 +107,7 @@ bool CRKLog::SaveBuffer(string fileName, PBYTE lpBuffer, DWORD dwSize)
 	fclose(file);
 	return true;
 }
-void CRKLog::PrintBuffer(string &strOutput, PBYTE lpBuffer, DWORD dwSize, UINT uiLineCount)
+void CRKLog::PrintBuffer(string &strOutput, PBYTE lpBuffer, unsigned int dwSize, UINT uiLineCount)
 {
 	UINT i,count;
 	char strHex[32];

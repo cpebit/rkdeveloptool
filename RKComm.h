@@ -58,16 +58,16 @@ typedef enum {
 typedef struct {
 	BYTE	ucOperCode;
 	BYTE	ucReserved;
-	DWORD	dwAddress;
+	unsigned int	dwAddress;
 	BYTE	ucReserved2;
 	USHORT	usLength;
 	BYTE	ucReserved3[7];
 } CBWCB, *PCBWCB;
 
 typedef struct {
-	DWORD	dwCBWSignature;
-	DWORD	dwCBWTag;
-	DWORD	dwCBWTransferLength;
+	unsigned int	dwCBWSignature;
+	unsigned int	dwCBWTag;
+	unsigned int	dwCBWTransferLength;
 	BYTE	ucCBWFlags;
 	BYTE	ucCBWLUN;
 	BYTE	ucCBWCBLength;
@@ -75,9 +75,9 @@ typedef struct {
 } CBW, *PCBW;
 
 typedef struct {
-	DWORD	dwCSWSignature;
-	DWORD	dwCSWTag;
-	DWORD	dwCBWDataResidue;
+	unsigned int	dwCSWSignature;
+	unsigned int	dwCSWTag;
+	unsigned int	dwCBWDataResidue;
 	BYTE	ucCSWStatus;
 } CSW, *PCSW;
 
@@ -115,62 +115,62 @@ class CRKLog;
 class CRKComm
 {
 public:
-	virtual int RKU_EraseBlock(BYTE ucFlashCS, DWORD dwPos, DWORD dwCount, BYTE ucEraseType) = 0;
+	virtual int RKU_EraseBlock(BYTE ucFlashCS, unsigned int dwPos, unsigned int dwCount, BYTE ucEraseType) = 0;
 	virtual int RKU_ReadChipInfo(BYTE *lpBuffer) = 0;
 	virtual int RKU_ReadFlashID(BYTE *lpBuffer) = 0;
 	virtual int RKU_ReadCapability(BYTE *lpBuffer)=0;
 	virtual int RKU_ReadFlashInfo(BYTE *lpBuffer, UINT *puiRead = NULL) = 0;
-	virtual int RKU_ReadLBA(DWORD dwPos, DWORD dwCount, BYTE *lpBuffer, BYTE bySubCode = RWMETHOD_IMAGE) = 0;	
+	virtual int RKU_ReadLBA(unsigned int dwPos, unsigned int dwCount, BYTE *lpBuffer, BYTE bySubCode = RWMETHOD_IMAGE) = 0;
 	virtual int RKU_ResetDevice(BYTE bySubCode = RST_NONE_SUBCODE) = 0;
-	virtual int RKU_TestDeviceReady(DWORD *dwTotal = NULL, DWORD *dwCurrent = NULL, BYTE bySubCode = TU_NONE_SUBCODE) = 0;
-	virtual int RKU_WriteLBA(DWORD dwPos, DWORD dwCount, BYTE *lpBuffer, BYTE bySubCode = RWMETHOD_IMAGE) = 0;
-	virtual int RKU_WriteSector(DWORD dwPos, DWORD dwCount, BYTE *lpBuffer) = 0;
-    virtual int RKU_DeviceRequest(DWORD dwRequest, BYTE *lpBuffer, DWORD dwDataSize) = 0;
+	virtual int RKU_TestDeviceReady(unsigned int *dwTotal = NULL, unsigned int *dwCurrent = NULL, BYTE bySubCode = TU_NONE_SUBCODE) = 0;
+	virtual int RKU_WriteLBA(unsigned int dwPos, unsigned int dwCount, BYTE *lpBuffer, BYTE bySubCode = RWMETHOD_IMAGE) = 0;
+	virtual int RKU_WriteSector(unsigned int dwPos, unsigned int dwCount, BYTE *lpBuffer) = 0;
+    virtual int RKU_DeviceRequest(unsigned int dwRequest, BYTE *lpBuffer, unsigned int dwDataSize) = 0;
 	virtual bool Reset_Usb_Config(STRUCT_RKDEVICE_DESC devDesc) = 0;
 	virtual bool Reset_Usb_Device() = 0;
-	virtual int RKU_EraseLBA(DWORD dwPos,DWORD dwCount)=0;
+	virtual int RKU_EraseLBA(unsigned int dwPos,unsigned int dwCount)=0;
 	CRKComm(CRKLog *pLog);
 	virtual ~CRKComm();
 protected:
 	STRUCT_RKDEVICE_DESC m_deviceDesc;
 	CRKLog *m_log;
 private:
-	virtual bool RKU_Write(BYTE *lpBuffer, DWORD dwSize) = 0;
-	virtual bool RKU_Read(BYTE *lpBuffer, DWORD dwSize) = 0;
+	virtual bool RKU_Write(BYTE *lpBuffer, unsigned int dwSize) = 0;
+	virtual bool RKU_Read(BYTE *lpBuffer, unsigned int dwSize) = 0;
 };
 class CRKUsbComm:public CRKComm
 {
 public:
-	virtual	int RKU_EraseBlock(BYTE ucFlashCS, DWORD dwPos, DWORD dwCount, BYTE ucEraseType);
+	virtual	int RKU_EraseBlock(BYTE ucFlashCS, unsigned int dwPos, unsigned int dwCount, BYTE ucEraseType);
 	virtual int RKU_ReadChipInfo(BYTE *lpBuffer);
 	virtual int RKU_ReadFlashID(BYTE *lpBuffer);
 	virtual int RKU_ReadCapability(BYTE *lpBuffer);
 	virtual int RKU_ReadFlashInfo(BYTE *lpBuffer, UINT *puiRead = NULL);
-	virtual int RKU_ReadLBA(DWORD dwPos, DWORD dwCount, BYTE *lpBuffer, BYTE bySubCode = RWMETHOD_IMAGE);
+	virtual int RKU_ReadLBA(unsigned int dwPos, unsigned int dwCount, BYTE *lpBuffer, BYTE bySubCode = RWMETHOD_IMAGE);
 	virtual int RKU_ResetDevice(BYTE bySubCode = RST_NONE_SUBCODE);
-	virtual int RKU_TestDeviceReady(DWORD *dwTotal = NULL, DWORD *dwCurrent = NULL, BYTE bySubCode = TU_NONE_SUBCODE);
-	virtual int RKU_WriteLBA(DWORD dwPos, DWORD dwCount, BYTE *lpBuffer, BYTE bySubCode = RWMETHOD_IMAGE);
-	virtual int RKU_WriteSector(DWORD dwPos, DWORD dwCount, BYTE *lpBuffer);
-    virtual int RKU_DeviceRequest(DWORD dwRequest, BYTE *lpBuffer, DWORD dwDataSize);
+	virtual int RKU_TestDeviceReady(unsigned int *dwTotal = NULL, unsigned int *dwCurrent = NULL, BYTE bySubCode = TU_NONE_SUBCODE);
+	virtual int RKU_WriteLBA(unsigned int dwPos, unsigned int dwCount, BYTE *lpBuffer, BYTE bySubCode = RWMETHOD_IMAGE);
+	virtual int RKU_WriteSector(unsigned int dwPos, unsigned int dwCount, BYTE *lpBuffer);
+    virtual int RKU_DeviceRequest(unsigned int dwRequest, BYTE *lpBuffer, unsigned int dwDataSize);
 	CRKUsbComm(STRUCT_RKDEVICE_DESC devDesc, CRKLog *pLog, bool &bRet);
 	virtual ~CRKUsbComm();
     virtual bool Reset_Usb_Config(STRUCT_RKDEVICE_DESC devDesc);
 	virtual bool Reset_Usb_Device();
-	virtual int RKU_EraseLBA(DWORD dwPos,DWORD dwCount);
+	virtual int RKU_EraseLBA(unsigned int dwPos,unsigned int dwCount);
 private:
 	void *m_pUsbHandle;
 	unsigned char m_pipeBulkIn;
 	unsigned char m_pipeBulkOut;
 	int m_interfaceNum;
-	virtual bool RKU_Write(BYTE *lpBuffer, DWORD dwSize);
-	virtual bool RKU_Read(BYTE *lpBuffer, DWORD dwSize);
+	virtual bool RKU_Write(BYTE *lpBuffer, unsigned int dwSize);
+	virtual bool RKU_Read(BYTE *lpBuffer, unsigned int dwSize);
 	bool InitializeUsb(STRUCT_RKDEVICE_DESC devDesc);
 	void UninitializeUsb();
 	bool RKU_ClearBuffer(CBW &cbw, CSW &csw);
-	DWORD RKU_Read_EX(BYTE *lpBuffer, DWORD dwSize);
+	unsigned int RKU_Read_EX(BYTE *lpBuffer, unsigned int dwSize);
 	void InitializeCBW(PCBW pCBW, USB_OPERATION_CODE code);
 	int RandomInteger(int low, int high);
-	DWORD MakeCBWTag();
+	unsigned int MakeCBWTag();
 };
 
 #endif

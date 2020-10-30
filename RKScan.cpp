@@ -6,6 +6,8 @@
  */
 
 #include "RKScan.h"
+#include "win32/win32.h"
+
 #define BUSID(id)  ((id & 0x0000FF00) >> 8)
 int CRKScan::GetDEVICE_COUNTS()
 {
@@ -460,7 +462,7 @@ bool CRKScan::MutexWait(UINT_VECTOR &vecExistedDevice, STRUCT_RKDEVICE_DESC &dev
 	return bFound;
 }
 
-bool CRKScan::MutexWaitPrepare(UINT_VECTOR &vecExistedDevice, DWORD uiOfflineDevice)
+bool CRKScan::MutexWaitPrepare(UINT_VECTOR &vecExistedDevice, unsigned int uiOfflineDevice)
 {
 	int iRet, iRet2;
 	device_list_iter iter;
@@ -469,7 +471,7 @@ bool CRKScan::MutexWaitPrepare(UINT_VECTOR &vecExistedDevice, DWORD uiOfflineDev
 	iRet = iRet2 =0;
 	while ((time(&timeNow) - timeInit) <= 3) {
 		iRet = Search(RKUSB_MASKROM | RKUSB_LOADER | RKUSB_MSC);
-		usleep(20000);
+		sleep(20);
 		iRet2 = Search(RKUSB_MASKROM | RKUSB_LOADER | RKUSB_MSC);
 		if (iRet2 == iRet) {
 			break;
@@ -556,7 +558,7 @@ bool CRKScan::Wait(STRUCT_RKDEVICE_DESC &device, ENUM_RKUSB_TYPE usbType, USHORT
 			bRet = true;
 			break;
 		}
-		usleep(50000);
+		sleep(50);
 	}
 
 	FreeDeviceList(deviceList);

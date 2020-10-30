@@ -5,12 +5,13 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 #include "RKImage.h"
+#include "win32/win32.h"
 
-DWORD CRKImage::GetVersion()
+UINT CRKImage::GetVersion()
 {
 	return m_version;
 }
-DWORD CRKImage::GetMergeVersion()
+UINT CRKImage::GetMergeVersion()
 {
 	return m_mergeVersion;
 }
@@ -35,15 +36,15 @@ USHORT CRKImage::GetBackupSize()
 	pBackupSize = (USHORT *)&m_reserved[12];
 	return *pBackupSize;
 }
-DWORD CRKImage::GetBootOffset()
+UINT CRKImage::GetBootOffset()
 {
 	return m_bootOffset;
 }
-DWORD CRKImage::GetBootSize()
+UINT CRKImage::GetBootSize()
 {
 	return m_bootSize;
 }
-DWORD CRKImage::GetFWOffset()
+UINT CRKImage::GetFWOffset()
 {
 	return m_fwOffset;
 }
@@ -60,9 +61,9 @@ bool CRKImage::SaveBootFile(string filename)
 		return false;
 	}
 	BYTE buffer[1024];
-	DWORD dwBufferSize = 1024;
-	DWORD dwBootSize = m_bootSize;
-	DWORD dwReadSize;
+	unsigned int dwBufferSize = 1024;
+	unsigned int dwBootSize = m_bootSize;
+	unsigned int dwReadSize;
 	fseek(m_pFile, m_bootOffset, SEEK_SET);
 	do {
 		dwReadSize = (dwBootSize >= 1024) ? dwBufferSize : dwBootSize;
@@ -86,9 +87,9 @@ bool CRKImage::SaveFWFile(string filename)
 		return false;
 	}
 	BYTE buffer[1024];
-	DWORD dwBufferSize = 1024;
+	unsigned int dwBufferSize = 1024;
 	long long dwFWSize = m_fwSize;
-	DWORD dwReadSize;
+	unsigned int dwReadSize;
 	fseeko(m_pFile, m_fwOffset, SEEK_SET);
 	do {
 		dwReadSize = (dwFWSize >= 1024) ? dwBufferSize : dwFWSize;
@@ -103,7 +104,7 @@ bool CRKImage::SaveFWFile(string filename)
 	fclose(file);
 	return true;
 }
-bool CRKImage::GetData(long long dwOffset, DWORD dwSize, PBYTE lpBuffer)
+bool CRKImage::GetData(long long dwOffset, unsigned int dwSize, PBYTE lpBuffer)
 {
 	if ( (dwOffset < 0) || (dwSize == 0) ) {
 		return false;
@@ -197,7 +198,7 @@ CRKImage::CRKImage(string filename, bool &bCheck)
 			return;
 		}
 		if ((imageHead.reserved[14] == 'H') && (imageHead.reserved[15] == 'I')) {
-			ulFwSize = *((DWORD *)(&imageHead.reserved[16]));
+			ulFwSize = *((unsigned int *)(&imageHead.reserved[16]));
 			ulFwSize <<= 32;
 			ulFwSize += imageHead.dwFWOffset;
 			ulFwSize += imageHead.dwFWSize;

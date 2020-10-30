@@ -15,11 +15,11 @@ bool CRKBoot::GetSignFlag()
 {
 	return m_bSignFlag;
 }
-DWORD CRKBoot::GetVersion()
+UINT CRKBoot::GetVersion()
 {
 	return m_version;
 }
-DWORD CRKBoot::GetMergeVersion()
+UINT CRKBoot::GetMergeVersion()
 {
 	return m_mergeVersion;
 }
@@ -52,7 +52,7 @@ bool CRKBoot::CrcCheck()
 }
 bool CRKBoot::SaveEntryFile(ENUM_RKBOOTENTRY type,UCHAR ucIndex,string fileName)
 {
-	DWORD dwOffset;
+	unsigned int dwOffset;
 	UCHAR ucCount,ucSize;
 	switch ( type )
 	{
@@ -90,9 +90,9 @@ bool CRKBoot::SaveEntryFile(ENUM_RKBOOTENTRY type,UCHAR ucIndex,string fileName)
 	fclose(file);
 	return true;
 }
-bool CRKBoot::GetEntryProperty(ENUM_RKBOOTENTRY type,UCHAR ucIndex,DWORD &dwSize,DWORD &dwDelay,char *pName)
+bool CRKBoot::GetEntryProperty(ENUM_RKBOOTENTRY type,UCHAR ucIndex,unsigned int &dwSize,unsigned int &dwDelay,char *pName)
 {
-	DWORD dwOffset;
+	unsigned int dwOffset;
 	UCHAR ucCount,ucSize;
 	switch ( type )
 	{
@@ -109,7 +109,7 @@ bool CRKBoot::GetEntryProperty(ENUM_RKBOOTENTRY type,UCHAR ucIndex,DWORD &dwSize
 	case ENTRYLOADER:
 		dwOffset = m_loaderOffset;
 		ucCount = m_loaderCount;
-		ucSize = m_loaderSize;//Loader³¤¶ÈÉú³ÉÊ±ÒÑ¾­512¶ÔÆë
+		ucSize = m_loaderSize;//Loaderï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½Ñ¾ï¿½512ï¿½ï¿½ï¿½ï¿½
 		break;
 	default:
 		return false;
@@ -130,7 +130,7 @@ bool CRKBoot::GetEntryProperty(ENUM_RKBOOTENTRY type,UCHAR ucIndex,DWORD &dwSize
 }
 bool CRKBoot::GetEntryData(ENUM_RKBOOTENTRY type,UCHAR ucIndex,PBYTE lpData)
 {
-	DWORD dwOffset;
+	unsigned int dwOffset;
 	UCHAR ucCount,ucSize;
 	switch ( type )
 	{
@@ -163,7 +163,7 @@ bool CRKBoot::GetEntryData(ENUM_RKBOOTENTRY type,UCHAR ucIndex,PBYTE lpData)
 }
 char CRKBoot::GetIndexByName(ENUM_RKBOOTENTRY type,char *pName)
 {
-	DWORD dwOffset;
+	unsigned int dwOffset;
 	UCHAR ucCount,ucSize;
 	switch ( type )
 	{
@@ -209,7 +209,7 @@ CRKBoot::~CRKBoot()
 	}
 }
 
-CRKBoot::CRKBoot(PBYTE lpBootData,DWORD dwBootSize,bool &bCheck)
+CRKBoot::CRKBoot(PBYTE lpBootData,unsigned int dwBootSize,bool &bCheck)
 {
 	Rc4DisableFlag.setContainer(this);
 	Rc4DisableFlag.getter(&CRKBoot::GetRc4DisableFlag);
@@ -289,7 +289,7 @@ CRKBoot::CRKBoot(PBYTE lpBootData,DWORD dwBootSize,bool &bCheck)
 		m_BootData=NULL;
 	}
 }
-void CRKBoot::WCHAR_To_wchar(WCHAR *src,wchar_t *dst,int len)
+void CRKBoot::WCHAR_To_wchar(unsigned short *src,wchar_t *dst,int len)
 {
 	int i;
 	memset(dst,0,len*sizeof(wchar_t));
@@ -300,7 +300,7 @@ void CRKBoot::WCHAR_To_wchar(WCHAR *src,wchar_t *dst,int len)
 		dst++;
 	}
 }
-void CRKBoot::WCHAR_To_char(WCHAR *src,char *dst,int len)
+void CRKBoot::WCHAR_To_char(unsigned short *src,char *dst,int len)
 {
 	int i;
 	memset(dst,0,len*sizeof(char));

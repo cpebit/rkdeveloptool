@@ -7,14 +7,14 @@
 typedef struct {
 	UINT uiTag;
 	USHORT usSize;
-	DWORD  dwVersion;
-	DWORD  dwMergeVersion;
+	unsigned int  dwVersion;
+	unsigned int  dwMergeVersion;
 	STRUCT_RKTIME stReleaseTime;
 	ENUM_RKDEVICE_TYPE emSupportChip;
-	DWORD  dwBootOffset;
-	DWORD  dwBootSize;
-	DWORD  dwFWOffset;
-	DWORD  dwFWSize;
+	unsigned int  dwBootOffset;
+	unsigned int  dwBootSize;
+	unsigned int  dwFWOffset;
+	unsigned int  dwFWSize;
 	BYTE   reserved[IMAGE_RESERVED_SIZE];
 } STRUCT_RKIMAGE_HEAD, *PSTRUCT_RKIMAGE_HEAD;
 #pragma pack()
@@ -48,7 +48,7 @@ public:
 	CRKBoot *m_bootObject;
 	bool SaveBootFile(string filename);
 	bool SaveFWFile(string filename);
-	bool GetData(long long dwOffset, DWORD dwSize, PBYTE lpBuffer);
+	bool GetData(long long dwOffset, unsigned int dwSize, PBYTE lpBuffer);
 	void GetReservedData(PBYTE &lpData, USHORT &usSize);
 	int GetMd5Data(PBYTE &lpMd5, PBYTE &lpSignMd5);
 	long long GetImageSize();
@@ -57,13 +57,13 @@ public:
 protected:
 
 private:
-	DWORD m_version;
-	DWORD m_mergeVersion;
+	unsigned int m_version;
+	unsigned int m_mergeVersion;
 	STRUCT_RKTIME m_releaseTime;
 	ENUM_RKDEVICE_TYPE m_supportDevice;
-	DWORD m_bootOffset;
-	DWORD m_bootSize;
-	DWORD m_fwOffset;
+	unsigned int m_bootOffset;
+	unsigned int m_bootSize;
+	unsigned int m_fwOffset;
 	long long m_fwSize;
 
 	BYTE  m_md5[32];

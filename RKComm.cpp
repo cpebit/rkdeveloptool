@@ -8,6 +8,8 @@
 #include "RKComm.h"
 #include "RKLog.h"
 #include "Endian.h"
+#include "win32/win32.h"
+
 extern unsigned short CRC_CCITT(unsigned char* p, UINT CalculateNumber);
 CRKComm::CRKComm(CRKLog *pLog)
 {
@@ -123,7 +125,7 @@ bool CRKUsbComm::Reset_Usb_Device()
     return (iRet == 0) ? true : false;
 }
 
-bool CRKUsbComm::RKU_Read(BYTE* lpBuffer, DWORD dwSize)
+bool CRKUsbComm::RKU_Read(BYTE* lpBuffer, unsigned int dwSize)
 {
 	int  iRet;
 	int  nRead;
@@ -143,7 +145,7 @@ bool CRKUsbComm::RKU_Read(BYTE* lpBuffer, DWORD dwSize)
 	return true;
 }
 
-bool CRKUsbComm::RKU_Write(BYTE* lpBuffer, DWORD dwSize)
+bool CRKUsbComm::RKU_Write(BYTE* lpBuffer, unsigned int dwSize)
 {
 	int  iRet;
 	int nWrite;
@@ -171,9 +173,9 @@ int CRKUsbComm::RandomInteger(int low, int high)
 	k = (int)(d * (high - low + 1));
 	return (low + k);
 }
-DWORD CRKUsbComm::MakeCBWTag()
+unsigned int CRKUsbComm::MakeCBWTag()
 {
-	DWORD tag = 0;
+	unsigned int tag = 0;
 	int i = 0;
 
 	for(i=0; i<4; i++){
@@ -236,8 +238,8 @@ void CRKUsbComm::InitializeCBW(PCBW pCBW, USB_OPERATION_CODE code)
 
 bool CRKUsbComm::RKU_ClearBuffer(CBW& cbw, CSW& csw)
 {
-	DWORD dwReadBytes=0;
-	DWORD dwTotalRead=0;
+	unsigned int dwReadBytes=0;
+	unsigned int dwTotalRead=0;
 	int iTryCount;
 	iTryCount = 3;
 	do {
@@ -250,7 +252,7 @@ bool CRKUsbComm::RKU_ClearBuffer(CBW& cbw, CSW& csw)
 		if (dwReadBytes != sizeof(CSW))
 		{
 			iTryCount--;
-			sleep(3);
+			sleep(3000);
 		}
 		dwTotalRead += dwReadBytes;
 		if (dwTotalRead >= MAX_CLEAR_LEN)
@@ -261,7 +263,7 @@ bool CRKUsbComm::RKU_ClearBuffer(CBW& cbw, CSW& csw)
 	return false;
 }
 
-DWORD CRKUsbComm::RKU_Read_EX(BYTE* lpBuffer, DWORD dwSize)
+unsigned int CRKUsbComm::RKU_Read_EX(BYTE* lpBuffer, unsigned int dwSize)
 {
 	int  iRet;
 	int  nRead;
@@ -275,7 +277,7 @@ DWORD CRKUsbComm::RKU_Read_EX(BYTE* lpBuffer, DWORD dwSize)
 	return nRead;
 }
 
-int CRKUsbComm::RKU_EraseBlock(BYTE ucFlashCS, DWORD dwPos, DWORD dwCount, BYTE ucEraseType)
+int CRKUsbComm::RKU_EraseBlock(BYTE ucFlashCS, unsigned int dwPos, unsigned int dwCount, BYTE ucEraseType)
 {
     if ((m_deviceDesc.emUsbType != RKUSB_LOADER) && (m_deviceDesc.emUsbType != RKUSB_MASKROM)) {
         if (m_log) {
@@ -402,7 +404,7 @@ int CRKUsbComm::RKU_ReadFlashInfo(BYTE* lpBuffer, UINT *puiRead)
 		return ERR_DEVICE_WRITE_FAILED;
 	}
 
-	DWORD dwRead;
+	unsigned int dwRead;
 	dwRead = RKU_Read_EX(lpBuffer, 512);
 	if ((dwRead < 11) || (dwRead > 512))
 	{
@@ -439,7 +441,7 @@ int CRKUsbComm::RKU_ReadCapability(BYTE* lpBuffer)
     
 	CBW cbw;
 	CSW csw;
-	DWORD dwRead;
+	unsigned int dwRead;
 	
 	InitializeCBW(&cbw, READ_CAPABILITY);
 	cbw.dwCBWTransferLength = 8;
@@ -468,7 +470,7 @@ int CRKUsbComm::RKU_ReadCapability(BYTE* lpBuffer)
 	return ERR_SUCCESS;			
 }
 
-int CRKUsbComm::RKU_ReadLBA(DWORD dwPos, DWORD dwCount, BYTE* lpBuffer, BYTE bySubCode)
+int CRKUsbComm::RKU_ReadLBA(unsigned int dwPos, unsigned int dwCount, BYTE* lpBuffer, BYTE bySubCode)
 {
     if ((m_deviceDesc.emUsbType != RKUSB_LOADER) && (m_deviceDesc.emUsbType != RKUSB_MASKROM)) {
         if (m_log) {
@@ -493,7 +495,7 @@ int CRKUsbComm::RKU_ReadLBA(DWORD dwPos, DWORD dwCount, BYTE* lpBuffer, BYTE byS
 	{
 		return ERR_DEVICE_WRITE_FAILED;
 	}
-	DWORD dwTotal;
+	unsigned int dwTotal;
 	dwTotal = usSectorLen * wSectorSize;
 
 	if(!RKU_Read(lpBuffer, dwTotal))
@@ -554,7 +556,7 @@ int CRKUsbComm::RKU_ResetDevice(BYTE bySubCode)
 	return ERR_SUCCESS;
 }
 
-int CRKUsbComm::RKU_TestDeviceReady(DWORD *dwTotal, DWORD *dwCurrent, BYTE bySubCode)
+int CRKUsbComm::RKU_TestDeviceReady(unsigned int *dwTotal, unsigned int *dwCurrent, BYTE bySubCode)
 {
     if ((m_deviceDesc.emUsbType != RKUSB_LOADER) && (m_deviceDesc.emUsbType != RKUSB_MASKROM)) {
         if (m_log) {
@@ -597,7 +599,7 @@ int CRKUsbComm::RKU_TestDeviceReady(DWORD *dwTotal, DWORD *dwCurrent, BYTE bySub
 
 	return ERR_DEVICE_READY;
 }
-int CRKUsbComm::RKU_WriteLBA(DWORD dwPos, DWORD dwCount, BYTE* lpBuffer, BYTE bySubCode)
+int CRKUsbComm::RKU_WriteLBA(unsigned int dwPos, unsigned int dwCount, BYTE* lpBuffer, BYTE bySubCode)
 {
     if ((m_deviceDesc.emUsbType != RKUSB_LOADER) && (m_deviceDesc.emUsbType != RKUSB_MASKROM)) {
         if (m_log) {
@@ -611,7 +613,7 @@ int CRKUsbComm::RKU_WriteLBA(DWORD dwPos, DWORD dwCount, BYTE* lpBuffer, BYTE by
 	USHORT usCount;
 	wSectorSize = 512;
 	usCount = dwCount;
-	DWORD dwTotal = usCount * wSectorSize;
+	unsigned int dwTotal = usCount * wSectorSize;
 
 	InitializeCBW(&cbw, WRITE_LBA);
 	cbw.dwCBWTransferLength = dwCount * wSectorSize;
@@ -638,7 +640,7 @@ int CRKUsbComm::RKU_WriteLBA(DWORD dwPos, DWORD dwCount, BYTE* lpBuffer, BYTE by
 
 	return ERR_SUCCESS;
 }
-int CRKUsbComm::RKU_EraseLBA(DWORD dwPos, DWORD dwCount)
+int CRKUsbComm::RKU_EraseLBA(unsigned int dwPos, unsigned int dwCount)
 {
     if ((m_deviceDesc.emUsbType != RKUSB_LOADER) && (m_deviceDesc.emUsbType != RKUSB_MASKROM)) {
         if (m_log) {
@@ -673,7 +675,7 @@ int CRKUsbComm::RKU_EraseLBA(DWORD dwPos, DWORD dwCount)
 	return ERR_SUCCESS;
 }
 
-int CRKUsbComm::RKU_WriteSector(DWORD dwPos, DWORD dwCount, BYTE *lpBuffer)
+int CRKUsbComm::RKU_WriteSector(unsigned int dwPos, unsigned int dwCount, BYTE *lpBuffer)
 {
     if ((m_deviceDesc.emUsbType != RKUSB_LOADER) && (m_deviceDesc.emUsbType != RKUSB_MASKROM)) {
         if (m_log) {
@@ -717,7 +719,7 @@ int CRKUsbComm::RKU_WriteSector(DWORD dwPos, DWORD dwCount, BYTE *lpBuffer)
 }
 
 
-int CRKUsbComm::RKU_DeviceRequest(DWORD dwRequest, BYTE *lpBuffer, DWORD dwDataSize)
+int CRKUsbComm::RKU_DeviceRequest(unsigned int dwRequest, BYTE *lpBuffer, unsigned int dwDataSize)
 {
 	if (m_deviceDesc.emUsbType != RKUSB_MASKROM) {
 	    if (m_log) {
@@ -757,7 +759,7 @@ int CRKUsbComm::RKU_DeviceRequest(DWORD dwRequest, BYTE *lpBuffer, DWORD dwDataS
 	dwDataSize += 2;
 
 	UINT nSendBytes = 0;
-	DWORD dwTotalSended = 0;
+	unsigned int dwTotalSended = 0;
 	int iRet;
 
 	while(dwTotalSended < dwDataSize) {

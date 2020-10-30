@@ -7,18 +7,18 @@
 typedef struct  {
 	UINT uiTag;
 	USHORT usSize;
-	DWORD  dwVersion;
-	DWORD  dwMergeVersion;
+	unsigned int  dwVersion;
+	unsigned int  dwMergeVersion;
 	STRUCT_RKTIME stReleaseTime;
 	ENUM_RKDEVICE_TYPE emSupportChip;
 	UCHAR uc471EntryCount;
-	DWORD dw471EntryOffset;
+	unsigned int dw471EntryOffset;
 	UCHAR uc471EntrySize;
 	UCHAR uc472EntryCount;
-	DWORD dw472EntryOffset;
+	unsigned int dw472EntryOffset;
 	UCHAR uc472EntrySize;
 	UCHAR ucLoaderEntryCount;
-	DWORD dwLoaderEntryOffset;
+	unsigned int dwLoaderEntryOffset;
 	UCHAR ucLoaderEntrySize;
 	UCHAR ucSignFlag;
 	UCHAR ucRc4Flag;
@@ -28,10 +28,10 @@ typedef struct  {
 typedef struct  {
 	UCHAR ucSize;
 	ENUM_RKBOOTENTRY emType;
-	WCHAR szName[20];
-	DWORD dwDataOffset;
-	DWORD dwDataSize;
-	DWORD dwDataDelay;
+	unsigned short szName[20];
+	unsigned int dwDataOffset;
+	unsigned int dwDataSize;
+	unsigned int dwDataDelay;
 } STRUCT_RKBOOT_ENTRY, *PSTRUCT_RKBOOT_ENTRY;
 
 
@@ -58,34 +58,34 @@ public:
  	property<CRKBoot, unsigned char, READ_ONLY> EntryLoaderCount;
 	bool CrcCheck();
 	bool SaveEntryFile(ENUM_RKBOOTENTRY type, UCHAR ucIndex, string fileName);
-	bool GetEntryProperty(ENUM_RKBOOTENTRY type, UCHAR ucIndex, DWORD &dwSize, DWORD &dwDelay, char *pName = NULL);
+	bool GetEntryProperty(ENUM_RKBOOTENTRY type, UCHAR ucIndex, unsigned int &dwSize, unsigned int &dwDelay, char *pName = NULL);
 	char GetIndexByName(ENUM_RKBOOTENTRY type, char *pName);
 	bool GetEntryData(ENUM_RKBOOTENTRY type, UCHAR ucIndex, PBYTE lpData);
-	CRKBoot(PBYTE lpBootData, DWORD dwBootSize, bool &bCheck);
+	CRKBoot(PBYTE lpBootData, unsigned int dwBootSize, bool &bCheck);
 	~CRKBoot();
 protected:
 private:
 	bool m_bRc4Disable;
 	bool m_bSignFlag;
-	DWORD m_version;
-	DWORD m_mergeVersion;
+	unsigned int m_version;
+	unsigned int m_mergeVersion;
 	STRUCT_RKTIME m_releaseTime;
 	ENUM_RKDEVICE_TYPE m_supportDevice;
-	DWORD m_471Offset;
+	unsigned int m_471Offset;
 	UCHAR m_471Size;
 	UCHAR m_471Count;
-	DWORD m_472Offset;
+	unsigned int m_472Offset;
 	UCHAR m_472Size;
 	UCHAR m_472Count;
-	DWORD m_loaderOffset;
+	unsigned int m_loaderOffset;
 	UCHAR m_loaderSize;
 	UCHAR m_loaderCount;
 	BYTE  m_crc[4];
 	PBYTE m_BootData;
-	DWORD m_BootSize;
+	unsigned int m_BootSize;
 	USHORT m_BootHeadSize;
-	void WCHAR_To_wchar(WCHAR *src, wchar_t *dst, int len);
-	void WCHAR_To_char(WCHAR *src, char *dst, int len);
+	void WCHAR_To_wchar(unsigned short *src, wchar_t *dst, int len);
+	void WCHAR_To_char(unsigned short *src, char *dst, int len);
 };
 
 #endif

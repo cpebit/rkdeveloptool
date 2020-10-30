@@ -30,7 +30,7 @@ public:
 	bool FindRockusbVidPid(ENUM_RKDEVICE_TYPE type, USHORT &usVid, USHORT &usPid);
 	int Search(UINT type);
 	bool Wait(STRUCT_RKDEVICE_DESC &device, ENUM_RKUSB_TYPE usbType, USHORT usVid = 0, USHORT usPid = 0);
-	bool MutexWaitPrepare(UINT_VECTOR &vecExistedDevice, DWORD uiOfflineDevice);
+	bool MutexWaitPrepare(UINT_VECTOR &vecExistedDevice, unsigned int uiOfflineDevice);
 	bool MutexWait(UINT_VECTOR &vecExistedDevice, STRUCT_RKDEVICE_DESC &device, ENUM_RKUSB_TYPE usbType, USHORT usVid = 0, USHORT usPid = 0);
 	int GetPos(UINT locationID);
 	bool GetDevice(STRUCT_RKDEVICE_DESC &device, int pos);

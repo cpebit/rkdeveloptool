@@ -66,9 +66,9 @@ public:
 	void SetLayerName(char *value);
  	property<CRKDevice, char *, READ_WRITE> LayerName;
 
-	DWORD GetLocationID();
-	void SetLocationID(DWORD value);
- 	property<CRKDevice, DWORD, READ_WRITE> LocationID;
+	unsigned int GetLocationID();
+	void SetLocationID(unsigned int value);
+ 	property<CRKDevice, unsigned int, READ_WRITE> LocationID;
 
 	USHORT GetBcdUsb();
 	void SetBcdUsb(USHORT value);
@@ -95,7 +95,7 @@ public:
 	bool GetFlashInfo();
 	int EraseAllBlocks();
 	bool SetObject(CRKImage *pImage, CRKComm *pComm, CRKLog *pLog);
-	string GetLayerString(DWORD dwLocationID);
+	string GetLayerString(unsigned int dwLocationID);
 	CRKDevice(STRUCT_RKDEVICE_DESC &device);
 	~CRKDevice();
 protected:
@@ -111,10 +111,10 @@ protected:
 	bool m_bEmmc;
 	bool m_bDirectLba;
 	bool m_bFirst4mAccess;
-	int EraseEmmcBlock(UCHAR ucFlashCS, DWORD dwPos, DWORD dwCount);
-	int EraseEmmcByWriteLBA(DWORD dwSectorPos, DWORD dwCount);
+	int EraseEmmcBlock(UCHAR ucFlashCS, unsigned int dwPos, unsigned int dwCount);
+	int EraseEmmcByWriteLBA(unsigned int dwSectorPos, unsigned int dwCount);
 	bool EraseEmmc();
-	bool Boot_VendorRequest(DWORD requestCode, PBYTE pBuffer, DWORD dwDataSize);
+	bool Boot_VendorRequest(unsigned int requestCode, PBYTE pBuffer, unsigned int dwDataSize);
 	bool ReadCapability();
 private:
 	USHORT m_vid;
