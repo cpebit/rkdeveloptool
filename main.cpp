@@ -145,81 +145,6 @@ void PrintData(PBYTE pData, int nSize)
 		printf("     %s\r\n", szPrint);
 }
 
-//	bool StringToWideString(char *pszSrc, wchar_t *&pszDest)
-//	{
-//		if (!pszSrc)
-//			return false;
-//		int nSrcLen = strlen(pszSrc);
-//		int nDestLen = nSrcLen * 2;
-//
-//		pszDest = NULL;
-//		pszDest = new wchar_t[nDestLen];
-//		if (!pszDest)
-//			return false;
-//		nDestLen = nDestLen * sizeof(wchar_t);
-//		memset(pszDest, 0, nDestLen);
-//		int iRet;
-//		iconv_t cd;
-//		cd = iconv_open("UTF-32", "UTF-8");
-//		if((iconv_t)-1 == cd) {
-//			delete []pszDest;
-//			pszDest = NULL;
-//		      return false;
-//		 }
-//		char *pIn, *pOut;
-//		pIn = (char *)pszSrc;
-//		pOut = (char *)pszDest;
-//
-//		iRet = iconv(cd, (char **)&pIn, (size_t *)&nSrcLen, (char **)&pOut, (size_t *)&nDestLen);
-//
-//		if(iRet == -1) {
-//			delete []pszDest;
-//			pszDest = NULL;
-//			iconv_close(cd);
-//			return false;
-//		 }
-//
-//		 iconv_close(cd);
-//
-//		 return true;
-//	}
-//	bool WideStringToString(wchar_t *pszSrc, char *&pszDest)
-//	{
-//		if (!pszSrc)
-//			return false;
-//		int nSrcLen = wcslen(pszSrc);
-//		int nDestLen = nSrcLen * 2;
-//		nSrcLen = nSrcLen * sizeof(wchar_t);
-//		pszDest = NULL;
-//		pszDest = new char[nDestLen];
-//		if (!pszDest)
-//			return false;
-//		memset(pszDest, 0, nDestLen);
-//		int iRet;
-//		iconv_t cd;
-//		cd = iconv_open("UTF-8", "UTF-32");
-//
-//		if((iconv_t)-1 == cd) {
-//			delete []pszDest;
-//			pszDest = NULL;
-//		      return false;
-//		 }
-//		char *pIn, *pOut;
-//		pIn = (char *)pszSrc;
-//		pOut = (char *)pszDest;
-//		iRet = iconv(cd, (char **)&pIn, (size_t *)&nSrcLen, (char **)&pOut, (size_t *)&nDestLen);
-//
-//		if(iRet == -1) {
-//			delete []pszDest;
-//			pszDest = NULL;
-//			iconv_close(cd);
-//			return false;
-//		 }
-//
-//		 iconv_close(cd);
-//
-//		 return true;
-//	}
 int find_config_item(CONFIG_ITEM_VECTOR &vecItems, const char *pszName)
 {
 	unsigned int i;
@@ -632,7 +557,10 @@ bool get_lba_from_gpt(u8 *master, char *pszName, u64 *lba, u64 *lba_end)
 	}
 	if (bFound) {
 		*lba = le64_to_cpu(gptEntry->starting_lba);
-		*lba_end =  le64_to_cpu(gptEntry->ending_lba);
+		if (gptMasterHead->last_usable_lba == gptEntry->ending_lba)
+			*lba_end = 0xFFFFFFFF;
+		else
+			*lba_end =  le64_to_cpu(gptEntry->ending_lba);
 		return true;
 	}
 	return false;
@@ -1041,7 +969,6 @@ bool write_gpt(STRUCT_RKDEVICE_DESC &dev, char *szParameter)
 			printf("\r\n");
 			return bSuccess;
 		}
-		vecItems[vecItems.size()-1].uiItemSize = total_size_sector - 33;
 		//3.generate gpt info
 		create_gpt_buffer(master_gpt, vecItems, vecUuid, total_size_sector);
 		memcpy(backup_gpt, master_gpt + 2* SECTOR_SIZE, 32 * SECTOR_SIZE);
@@ -1907,16 +1834,20 @@ bool upgrade_loader(STRUCT_RKDEVICE_DESC &dev, char *szLoader)
 	CRKImage *pImage = NULL;
 	CRKBoot *pBoot = NULL;
 	CRKComm *pComm = NULL;
-	bool bRet, bSuccess = false;
+	bool bRet,bNewIDBlock=false, bSuccess = false;
 	int iRet;
+	unsigned int i;
 	signed char index;
-	USHORT usFlashDataSec, usFlashBootSec;
-	unsigned int dwLoaderSize, dwLoaderDataSize, dwDelay, dwSectorNum;
+	USHORT usFlashDataSec, usFlashBootSec, usFlashHeadSec;
+	unsigned int dwLoaderSize, dwLoaderDataSize, dwLoaderHeadSize, dwDelay, dwSectorNum;
 	char loaderCodeName[] = "FlashBoot";
 	char loaderDataName[] = "FlashData";
+	char loaderHeadName[] = "FlashHead";
 	PBYTE loaderCodeBuffer = NULL;
 	PBYTE loaderDataBuffer = NULL;
+	PBYTE loaderHeadBuffer = NULL;
 	PBYTE pIDBData = NULL;
+	BYTE capability[8];
 	pImage = new CRKImage(szLoader, bRet);
 	if (!bRet){
 		ERROR_COLOR_ATTR;
@@ -1987,9 +1918,51 @@ bool upgrade_loader(STRUCT_RKDEVICE_DESC &dev, char *szLoader)
 			goto Exit_UpgradeLoader;
 		}
 
+		index = pBoot->GetIndexByName(ENTRYLOADER, loaderHeadName);
+		if (index != -1) {
+			bRet = pBoot->GetEntryProperty(ENTRYLOADER, index, dwLoaderHeadSize, dwDelay);
+			if (!bRet) {
+				if (g_pLogObject) {
+					g_pLogObject->Record("ERROR: %s --> Get LoaderHead Entry Size failed", __func__);
+				}
+				goto Exit_UpgradeLoader;
+			}
+
+			loaderHeadBuffer= new BYTE[dwLoaderHeadSize];
+			memset(loaderHeadBuffer, 0, dwLoaderHeadSize);
+			if (!pBoot->GetEntryData(ENTRYLOADER,index,loaderHeadBuffer)) {
+				if (g_pLogObject) {
+					g_pLogObject->Record("ERROR: %s --> Get LoaderHead Data failed", __func__);
+				}
+				goto Exit_UpgradeLoader;
+			}
+
+			iRet = pComm->RKU_ReadCapability(capability);
+			if (iRet != ERR_SUCCESS)
+			{
+				if (g_pLogObject)
+					g_pLogObject->Record("ERROR: %s --> read capability failed", __func__);
+				goto Exit_UpgradeLoader;
+			}
+			if ((capability[1] & 1) == 0) {
+				if (g_pLogObject)
+					g_pLogObject->Record("ERROR: %s --> device did not support to upgrade the loader", __func__);
+				ERROR_COLOR_ATTR;
+				printf("Device not support to upgrade the loader!");
+				NORMAL_COLOR_ATTR;
+				printf("\r\n");
+				goto Exit_UpgradeLoader;
+			}
+			bNewIDBlock = true;
+		}
+
 		usFlashDataSec = (ALIGN(dwLoaderDataSize, 2048)) / SECTOR_SIZE;
 		usFlashBootSec = (ALIGN(dwLoaderSize, 2048)) / SECTOR_SIZE;
-		dwSectorNum = 4 + usFlashDataSec + usFlashBootSec;
+		if (bNewIDBlock) {
+			usFlashHeadSec = (ALIGN(dwLoaderHeadSize, 2048)) / SECTOR_SIZE;
+			dwSectorNum = usFlashHeadSec + usFlashDataSec + usFlashBootSec;
+		} else
+			dwSectorNum = 4 + usFlashDataSec + usFlashBootSec;
 		pIDBData = new BYTE[dwSectorNum*SECTOR_SIZE];
 		if (!pIDBData) {
 			ERROR_COLOR_ATTR;
@@ -1999,14 +1972,36 @@ bool upgrade_loader(STRUCT_RKDEVICE_DESC &dev, char *szLoader)
 			goto Exit_UpgradeLoader;
 		}
 		memset(pIDBData, 0, dwSectorNum * SECTOR_SIZE);
-		iRet = MakeIDBlockData(loaderDataBuffer, loaderCodeBuffer, pIDBData, usFlashDataSec, usFlashBootSec, dwLoaderDataSize, dwLoaderSize, pBoot->Rc4DisableFlag);
-		if (iRet != 0) {
-			ERROR_COLOR_ATTR;
-			printf("Making idblock failed!");
-			NORMAL_COLOR_ATTR;
-			printf("\r\n");
-			goto Exit_UpgradeLoader;
+		if (bNewIDBlock) {
+			if (pBoot->Rc4DisableFlag)
+			{//close rc4 encryption
+				for (i=0;i<dwLoaderHeadSize/SECTOR_SIZE;i++)
+				{
+					P_RC4(loaderHeadBuffer+SECTOR_SIZE*i,SECTOR_SIZE);
+				}
+				for (i=0;i<dwLoaderDataSize/SECTOR_SIZE;i++)
+				{
+					P_RC4(loaderDataBuffer+SECTOR_SIZE*i,SECTOR_SIZE);
+				}
+				for (i=0;i<dwLoaderSize/SECTOR_SIZE;i++)
+				{
+					P_RC4(loaderCodeBuffer+SECTOR_SIZE*i,SECTOR_SIZE);
+				}
+			}
+			memcpy(pIDBData, loaderHeadBuffer, dwLoaderHeadSize);
+			memcpy(pIDBData+SECTOR_SIZE*usFlashHeadSec, loaderDataBuffer, dwLoaderDataSize);
+			memcpy(pIDBData+SECTOR_SIZE*(usFlashHeadSec+usFlashDataSec), loaderCodeBuffer, dwLoaderSize);
+		} else {
+			iRet = MakeIDBlockData(loaderDataBuffer, loaderCodeBuffer, pIDBData, usFlashDataSec, usFlashBootSec, dwLoaderDataSize, dwLoaderSize, pBoot->Rc4DisableFlag);
+			if (iRet != 0) {
+				ERROR_COLOR_ATTR;
+				printf("Making idblock failed!");
+				NORMAL_COLOR_ATTR;
+				printf("\r\n");
+				goto Exit_UpgradeLoader;
+			}
 		}
+
 		iRet = pComm->RKU_WriteLBA(64, dwSectorNum, pIDBData);
 		CURSOR_MOVEUP_LINE(1);
 		CURSOR_DEL_LINE;
@@ -2028,6 +2023,8 @@ Exit_UpgradeLoader:
 		delete []loaderCodeBuffer;
 	if (loaderDataBuffer)
 		delete []loaderDataBuffer;
+	if (loaderHeadBuffer)
+		delete []loaderHeadBuffer;
 	if (pIDBData)
 		delete []pIDBData;
 	return bSuccess;
@@ -2412,6 +2409,30 @@ bool read_capability(STRUCT_RKDEVICE_DESC &dev)
 			{
 				printf("First 4m Access:\tenabled\r\n");
 			}
+			if (capability[0] & 8)
+			{
+				printf("Read LBA:\tenabled\r\n");
+			}
+
+			if (capability[0] & 20)
+			{
+				printf("Read Com Log:\tenabled\r\n");
+			}
+
+			if (capability[0] & 40)
+			{
+				printf("Read IDB Config:\tenabled\r\n");
+			}
+
+			if (capability[0] & 80)
+			{
+				printf("Read Secure Mode:\tenabled\r\n");
+			}
+
+			if (capability[1] & 1)
+			{
+				printf("New IDB:\tenabled\r\n");
+			}
 			bSuccess = true;
 		}
 	} else {
@@ -2562,6 +2583,7 @@ bool erase_ubi_block(STRUCT_RKDEVICE_DESC &dev, u32 uiOffset, u32 uiPartSize)
 	int iRet;
 	unsigned int *pID=NULL;
 
+	printf("Erase ubi in, offset=0x%08x,size=0x%08x!\r\n",uiOffset,uiPartSize);
 	if (!check_device_type(dev, RKUSB_LOADER | RKUSB_MASKROM))
 		return false;
 	pComm =  new CRKUsbComm(dev, g_pLogObject, bRet);
@@ -2595,15 +2617,13 @@ bool erase_ubi_block(STRUCT_RKDEVICE_DESC &dev, u32 uiOffset, u32 uiPartSize)
 		goto EXIT_UBI_ERASE;
 	}
 	if (uiPartSize==0xFFFFFFFF)
-		uiPartSize = info.uiFlashSize - uiOffset - (info.usBlockSize * 4);
+		uiPartSize = info.uiFlashSize - uiOffset;
 
 	uiStartBlock = uiOffset / info.usBlockSize;
-	if ((uiPartSize % info.usBlockSize) == 0)
-		uiEraseBlock = uiPartSize / info.usBlockSize;
-	else
-		uiEraseBlock = uiPartSize / info.usBlockSize + 1;
+	uiEraseBlock = (uiPartSize + info.usBlockSize -1) / info.usBlockSize;
 
 
+	printf("Erase block start, offset=0x%08x,count=0x%08x!\r\n",uiStartBlock,uiEraseBlock);
 	uiErasePos=uiStartBlock;
 	while (uiEraseBlock>0)
 	{
@@ -2696,9 +2716,9 @@ bool write_sparse_lba(STRUCT_RKDEVICE_DESC &dev, UINT uiBegin, UINT uiSize, char
 	FILE *file = NULL;
 	bool bRet, bSuccess = false, bFirst = true;
 	int iRet;
-	u64 iTotalWrite = 0, iFileSize = 0;
+	u64 iTotalWrite = 0, iFileSize = 0,dwChunkDataSize;
 	UINT iRead = 0, uiTransferSec, curChunk, i;
-	UINT dwChunkDataSize, dwMaxReadWriteBytes, dwTransferBytes, dwFillByte, dwCrc;
+	UINT dwMaxReadWriteBytes, dwTransferBytes, dwFillByte, dwCrc;
 	BYTE pBuf[SECTOR_SIZE * DEFAULT_RW_LBA];
 	sparse_header header;
 	chunk_header  chunk;
@@ -2777,7 +2797,7 @@ bool write_sparse_lba(STRUCT_RKDEVICE_DESC &dev, UINT uiBegin, UINT uiSize, char
 				}
 				break;
 			case CHUNK_TYPE_FILL:
-				dwChunkDataSize = chunk.chunk_sz * header.blk_sz;
+				dwChunkDataSize = (u64)chunk.chunk_sz * header.blk_sz;
 				if (!EatSparseData(file, (PBYTE)&dwFillByte, 4)) {
 					goto Exit_WriteSparseLBA;
 				}
@@ -2818,7 +2838,7 @@ bool write_sparse_lba(STRUCT_RKDEVICE_DESC &dev, UINT uiBegin, UINT uiSize, char
 				}
 				break;
 			case CHUNK_TYPE_DONT_CARE:
-				dwChunkDataSize = chunk.chunk_sz * header.blk_sz;
+				dwChunkDataSize = (u64)chunk.chunk_sz * header.blk_sz;
 				iTotalWrite += dwChunkDataSize;
 				uiTransferSec = ((dwChunkDataSize % SECTOR_SIZE == 0) ? (dwChunkDataSize / SECTOR_SIZE) : (dwChunkDataSize / SECTOR_SIZE + 1));
 				uiBegin += uiTransferSec;
@@ -3197,7 +3217,12 @@ bool handle_command(int argc, char* argv[], CRKScan *pScan)
 					else {
 						bSuccess = true;
 						if (is_ubifs_image(argv[3]))
-							bSuccess = erase_ubi_block(dev, (u32)lba, (u32)(lba_end - lba + 1));
+						{
+							if (lba_end == 0xFFFFFFFF)
+								bSuccess = erase_ubi_block(dev, (u32)lba, (u32)lba_end);
+							else
+								bSuccess = erase_ubi_block(dev, (u32)lba, (u32)(lba_end - lba + 1));
+						}
 						if (bSuccess)
 							bSuccess = write_lba(dev, (u32)lba, argv[3]);
 						else
@@ -3216,7 +3241,7 @@ bool handle_command(int argc, char* argv[], CRKScan *pScan)
 
 							bSuccess = true;
 							if (is_ubifs_image(argv[3]))
-							bSuccess = erase_ubi_block(dev, part_offset, part_size);
+								bSuccess = erase_ubi_block(dev, part_offset, part_size);
 							if (bSuccess)
 								bSuccess = write_lba(dev, part_offset, argv[3]);
 							else

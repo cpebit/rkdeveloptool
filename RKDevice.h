@@ -93,7 +93,7 @@ public:
 	bool PowerOffDevice();
 	bool CheckChip();
 	bool GetFlashInfo();
-	int EraseAllBlocks();
+	int EraseAllBlocks(bool force_block_erase=false);
 	bool SetObject(CRKImage *pImage, CRKComm *pComm, CRKLog *pLog);
 	string GetLayerString(unsigned int dwLocationID);
 	CRKDevice(STRUCT_RKDEVICE_DESC &device);
